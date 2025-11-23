@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>尖山發電廠 CEMS 智能監測 (終極圖表版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 20px; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 { margin: 0; color: #448AFF; font-size: 28px; }
+        .sub-title { color: #888; font-size: 14px; margin-top: 5px; }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 15px;
+            max-width: 1400px;
+            margin: 0 auto 40px auto;
+        }
+
+        .card {
+            background-color: #1E1E1E;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #333;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            transition: background-color 0.3s;
+        }
+        /* 運轉中樣式 */
+        .card-running { background-color: #0D3050 !important; border: 1px solid #2196F3; }
+
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px;
+        }
+
+        .unit-name { font-size: 22px; font-weight: bold; color: #fff; }
+        .state-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #333; color: #888; font-weight: bold;}
+        .state-run { background: #2196F3; color: #fff; }
+
+        .status-light { width: 14px; height: 14px; border-radius: 50%; background-color: #444; border: 1px solid #000; }
+        .status-ok { background-color: #00E676; box-shadow: 0 0 8px #00E676; } 
+        .status-warn { background-color: #FFD700; box-shadow: 0 0 8px #FFD700; } 
+        .status-danger { background-color: #FF5252; box-shadow: 0 0 8px #FF5252; } 
+
+        .data-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px;}
+        .label { color: #aaa; font-size: 15px; }
+        .value { font-family: 'Courier New', monospace; font-size: 24px; font-weight: bold; }
+        .unit { font-size: 12px; color: #bbb; margin-left: 3px; }
+
+        .val-normal { color: #00E5FF; } 
+        .val-warn { color: #FFD700; }    
+        .val-danger { color: #FF5252; }  
+
+        /* 圖表區 */
+        .chart-section {
+            max-width: 1400px; margin: 0 auto; background: #1E1E1E; padding: 20px; border-radius: 12px; border: 1px solid #333;
+        }
+        .chart-controls {
+            display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: center;
+            background: #252525; padding: 15px; border-radius: 8px;
+        }
+        select, input { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 6px; font-size: 16px; }
+        button { background: #448AFF; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #2962FF; }
+        
+        #msg-box { text-align: center; color: #FFAB40; margin-top: 10px; min-height: 20px; font-size: 14px;}
+        #footer-msg { text-align: center; color: #666; margin-top: 30px; font-size: 12px; }
+        .legend { display: inline-block; margin: 0 5px; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #000; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>尖山發電廠 CEMS 智能監測</h1>
+        <div class="sub-title" id="last-update">系統啟動中...</div>
+    </header>
+
+    <div id="dashboard" class="grid-container"></div>
+
+    <div class="chart-section">
+        <h3 style="margin-top:0; color:#448AFF;">📈 歷史趨勢查詢</h3>
+        <div class="chart-controls">
+            <select id="sel-unit"></select>
+            <select id="sel-item">
+                <option value="NOX">氮氧化物 (NOx)</option>
+                <option value="SO2">二氧化硫 (SO2)</option>
+                <option value="OPAC">不透光率 (Opac)</option>
+            </select>
+            <input type="date" id="sel-date">
+            <button onclick="queryHistory()">🔍 查詢繪圖</button>
+        </div>
+        <div id="msg-box"></div>
+        <div style="position: relative; height:400px; width:100%">
+            <canvas id="historyChart"></canvas>
+        </div>
+    </div>
+    
+    <div id="footer-msg">
+        資料來源：環境部 15分鐘數據 (AQX_P_186)<br>
+        <span class="legend" style="background:#FFD700;">黃色預警</span> NOx>300 | SO2>120 | 不透光>8
+        <span class="legend" style="background:#FF5252;">紅色超標</span> NOx>363 | SO2>133 | 不透光>40<br>
+        <span style="color:#2196F3; font-weight:bold;">藍色背景</span> = 運轉中
+    </div>
+
+    <script>
+        const API_KEY = '473ceb6e-8b72-4fc3-832e-183f324588ad';
+        const CONTROL_ID = 'X0501232'; 
+        const RULES = {
+            NOX: { warn: 300, limit: 363 }, 
+            SO2: { warn: 120, limit: 133 }, 
+            OPAC: { warn: 8, limit: 40 }    
+        };
+
+        const polNoMap = {};
+        const idToPolNo = {};
+        for(let i=1; i<=12; i++) {
+            let pCode = 'P' + String(i).padStart(3, '0');
+            polNoMap[pCode] = i;
+            idToPolNo[i] = pCode;
+        }
+
+        // ===================== PART 1: 即時儀表板 =====================
+        function initDashboard() {
+            const container = document.getElementById('dashboard');
+            let html = '';
+            for (let i = 1; i <= 12; i++) {
+                html += `
+                    <div class="card" id="card-${i}">
+                        <div class="card-header">
+                            <div><span class="unit-name">#${i} 機組</span> <span class="state-tag" id="state-${i}">停機</span></div>
+                            <div class="status-light" id="status-${i}"></div>
+                        </div>
+                        <div class="data-row"><span class="label">NOx</span><div><span class="value val-normal" id="nox-${i}">--</span><span class="unit">ppm</span></div></div>
+                        <div class="data-row"><span class="label">SO2</span><div><span class="value val-normal" id="so2-${i}">--</span><span class="unit">ppm</span></div></div>
+                        <div class="data-row"><span class="label">不透光</span><div><span class="value val-normal" id="opac-${i}">--</span><span class="unit">%</span></div></div>
+                    </div>`;
+            }
+            container.innerHTML = html;
+
+            const selUnit = document.getElementById('sel-unit');
+            for (let i = 1; i <= 12; i++) {
+                let option = document.createElement('option');
+                option.value = i;
+                option.text = `機組 #${i}`;
+                selUnit.appendChild(option);
+            }
+            document.getElementById('sel-date').valueAsDate = new Date();
+        }
+
+        async function fetchRealtime() {
+            const updateLabel = document.getElementById('last-update');
+            const URL = `https://data.moenv.gov.tw/api/v2/aqx_p_186?api_key=${API_KEY}&limit=1000&sort=m_time desc&format=json&filters=cno,eq,${CONTROL_ID}`;
+            try {
+                const res = await fetch(URL);
+                const data = await res.json();
+                if (data.records && data.records.length > 0) {
+                    processRealtimeData(data.records);
+                    const now = new Date();
+                    updateLabel.innerText = `資料時間: ${data.records[0].m_time} (更新: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')})`;
+                    updateLabel.style.color = "#00E676";
+                }
+            } catch (e) { console.error(e); updateLabel.innerText = "連線失敗"; updateLabel.style.color = "red"; }
+        }
+
+        function processRealtimeData(records) {
+            let units = {};
+            for(let i=1; i<=12; i++) units[i] = { nox: null, so2: null, opac: null, isRunning: false };
+
+            records.forEach(r => {
+                let id = polNoMap[r.polno || r.PolNo];
+                if (id) {
+                    let name = r.itemdesc || ""; 
+                    let val = parseFloat(r.m_value);
+                    if (r.code2 === "NA10") units[id].isRunning = true;
+
+                    if (name.includes("氮氧化物") || name.includes("NOx")) { if(units[id].nox === null) units[id].nox = val; }
+                    else if (name.includes("二氧化硫") || name.includes("SO2")) { if(units[id].so2 === null) units[id].so2 = val; }
+                    else if (name.includes("不透光") || name.includes("Opac")) { if(units[id].opac === null) units[id].opac = val; }
+                }
+            });
+            for(let i=1; i<=12; i++) updateCard(i, units[i]);
+        }
+
+        function updateCard(id, data) {
+            const card = document.getElementById(`card-${id}`);
+            const state = document.getElementById(`state-${id}`);
+            if(data.isRunning) { card.className = "card card-running"; state.innerText = "運轉中"; state.className="state-tag state-run"; }
+            else { card.className = "card"; state.innerText = "停機"; state.className="state-tag"; }
+
+            updateVal('NOX', data.nox, `nox-${id}`);
+            updateVal('SO2', data.so2, `so2-${id}`);
+            updateVal('OPAC', data.opac, `opac-${id}`);
+
+            const light = document.getElementById(`status-${id}`);
+            let status = "ok";
+            if ((data.nox > RULES.NOX.limit) || (data.so2 > RULES.SO2.limit) || (data.opac > RULES.OPAC.limit)) status = "danger";
+            else if ((data.nox > RULES.NOX.warn) || (data.so2 > RULES.SO2.warn) || (data.opac > RULES.OPAC.warn)) status = "warn";
+            
+            if(data.nox !== null || data.so2 !== null) light.className = `status-light status-${status}`;
+            else light.className = "status-light";
+        }
+
+        function updateVal(type, val, elId) {
+            const el = document.getElementById(elId);
+            if(val !== null) {
+                el.innerText = val.toFixed(2);
+                let cls = "value val-normal";
+                if(val > RULES[type].limit) cls = "value val-danger";
+                else if(val > RULES[type].warn) cls = "value val-warn";
+                el.className = cls;
+            }
+        }
+
+        // ===================== PART 2: 歷史圖表 (邏輯重寫) =====================
+        
+        let myChart = null;
+
+        async function queryHistory() {
+            const unitId = document.getElementById('sel-unit').value;
+            const itemType = document.getElementById('sel-item').value;
+            const dateStr = document.getElementById('sel-date').value; // 格式: 2025-11-23
+            const msgBox = document.getElementById('msg-box');
+            const btn = document.querySelector('button');
+
+            if (!dateStr) { alert("請選擇日期"); return; }
+
+            // 取得對應的 P0xx 編號
+            const polNo = idToPolNo[unitId]; 
+
+            // 🌟 關鍵修改 1：不篩選時間，只篩選機組和電廠
+            // 我們直接抓該機組最近 1000 筆資料 (limit=1000 絕對夠包含近2天)
+            const URL = `https://data.moenv.gov.tw/api/v2/aqx_p_186?api_key=${API_KEY}&limit=1000&format=json&filters=cno,eq,${CONTROL_ID}|polno,eq,${polNo}&sort=m_time desc`;
+
+            try {
+                btn.innerText = "下載中..."; btn.disabled = true;
+                msgBox.innerText = `正在下載 機組 #${unitId} 的歷史資料...`;
+
+                const res = await fetch(URL);
+                const data = await res.json();
+                
+                btn.innerText = "🔍 查詢繪圖"; btn.disabled = false;
+
+                if (data.records && data.records.length > 0) {
+                    // 🌟 關鍵修改 2：資料抓回來後，用 JavaScript 過濾日期
+                    drawChart(data.records, itemType, unitId, dateStr);
+                } else {
+                    msgBox.innerText = `⚠️ 查無資料。請確認機組 #${unitId} 最近是否有運轉。`;
+                    if(myChart) myChart.clear();
+                }
+            } catch (e) {
+                btn.innerText = "🔍 查詢繪圖"; btn.disabled = false;
+                msgBox.innerText = "錯誤: " + e.message;
+            }
+        }
+
+        function drawChart(records, itemType, unitId, targetDate) {
+            const chartData = [];
+            
+            const keywords = {
+                'NOX': ['氮氧化物', 'NOx'],
+                'SO2': ['二氧化硫', 'SO2'],
+                'OPAC': ['不透光', 'Opac']
+            };
+
+            // 過濾資料：只留選定日期的數據
+            records.forEach(r => {
+                // r.m_time 格式通常是 "2025-11-23 15:00:00"
+                // 我們檢查它是否以選定的日期開頭
+                if (!r.m_time.startsWith(targetDate)) return;
+
+                let name = r.itemdesc || "";
+                let match = keywords[itemType].some(k => name.includes(k));
+                
+                if (match) {
+                    chartData.push({ x: r.m_time, y: parseFloat(r.m_value) });
+                }
+            });
+
+            // 排序數據 (API 預設是 desc，畫圖要 asc)
+            chartData.sort((a, b) => new Date(a.x) - new Date(b.x));
+
+            if (chartData.length === 0) {
+                document.getElementById('msg-box').innerText = `⚠️ 機組 #${unitId} 在 ${targetDate} 沒有 ${itemType} 的數據 (可能當天停機)。`;
+                if(myChart) myChart.clear();
+                return;
+            } else {
+                document.getElementById('msg-box').innerText = `✅ 成功繪製：機組 #${unitId} - ${itemType} (${targetDate})`;
+            }
+
+            let color = '#00E5FF'; 
+            let labelName = itemType;
+            let limitValue = RULES[itemType].limit;
+
+            if (itemType === 'NOX') { labelName = '氮氧化物 (ppm)'; color = '#00E5FF'; }
+            if (itemType === 'SO2') { labelName = '二氧化硫 (ppm)'; color = '#E040FB'; }
+            if (itemType === 'OPAC') { labelName = '不透光率 (%)'; color = '#FFAB40'; }
+
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: labelName,
+                        data: chartData,
+                        borderColor: color,
+                        backgroundColor: color + '33',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } },
+                            grid: { color: '#333' }, ticks: { color: '#aaa' }
+                        },
+                        y: {
+                            grid: { color: '#333' }, ticks: { color: '#aaa' }, beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#fff' } },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: limitValue, yMax: limitValue,
+                                    borderColor: '#FF5252', borderWidth: 2, borderDash: [6, 6],
+                                    label: { display: true, content: `法規上限: ${limitValue}`, color: '#FF5252', position: 'end', backgroundColor: 'rgba(0,0,0,0.7)' }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        initDashboard();
+        fetchRealtime();
+        setInterval(fetchRealtime, 60000);
+
+    </script>
+</body>
+</html>
