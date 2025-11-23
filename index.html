@@ -2,35 +2,33 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>尖山發電廠 環境監控系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>尖山發電廠 CEMS 監控系統</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
     <style>
+        /* ================= 電腦版樣式 (預設完整顯示) ================= */
         body { background-color: #121212; color: #ffffff; font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 20px; }
         header { text-align: center; margin-bottom: 20px; }
         h1 { margin: 0; color: #448AFF; font-size: 28px; }
         .sub-title { color: #888; font-size: 14px; margin-top: 5px; }
 
-        /* Debug Window */
         #debug-box { display: none; background: #b71c1c; color: #fff; padding: 15px; margin-bottom: 20px; border-radius: 8px; font-family: monospace; border: 1px solid #ff5252;}
 
-        /* --- 全廠摘要面板 --- */
+        /* 全廠摘要面板 */
         .summary-panel {
             display: flex; justify-content: center; gap: 0; 
             max-width: 1400px; margin: 0 auto 25px auto;
             background: #1E1E1E; border-radius: 12px; border: 1px solid #448AFF;
             box-shadow: 0 0 15px rgba(68, 138, 255, 0.15);
-            overflow: hidden; 
-            flex-wrap: wrap;
+            overflow: hidden; flex-wrap: wrap;
         }
         .summary-item { 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            flex: 1; min-width: 120px;
-            border-right: 1px solid #333; padding: 15px 5px; 
+            flex: 1; min-width: 110px; border-right: 1px solid #333; padding: 15px 5px; 
         }
         .summary-item:last-child { border-right: none; }
         
@@ -41,31 +39,26 @@
         .avg-val { color: #00E676; } 
         .boiler-val { color: #FF4081; }
         .weather-val { color: #FFAB40; } 
+        .aqi-val { color: #00E5FF; }
 
-        /* Grid */
+        /* 機組列表 (Grid) */
         .grid-container {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* 電腦版寬度寬鬆 */
             gap: 15px; max-width: 1600px; margin: 0 auto 40px auto;
         }
 
         .card {
             background-color: #1E1E1E; border-radius: 12px; padding: 15px;
             border: 1px solid #333; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-            transition: background-color 0.3s;
-            position: relative;
-            border-top-width: 4px;
+            transition: background-color 0.3s; position: relative; border-top-width: 4px;
         }
         
-        /* 期別顏色 */
         .phase-1 { border-top-color: #00E676; } 
         .phase-2 { border-top-color: #2979FF; } 
-
-        .phase-label {
-            font-size: 12px; margin-left: 8px; padding: 2px 6px; border-radius: 4px;
-            font-weight: bold; vertical-align: middle;
-        }
-        .bg-phase-1 { background-color: #00E676; color: #000; }
-        .bg-phase-2 { background-color: #2979FF; color: #fff; }
+        .phase-label { font-size: 12px; margin-left: 8px; padding: 2px 6px; border-radius: 4px; font-weight: bold; vertical-align: middle; }
+        .bg-phase-1 { background-color: #00E676; color: #000; } 
+        .bg-phase-2 { background-color: #2979FF; color: #fff; } 
 
         .card-running { background-color: #0D3050 !important; border-left: 1px solid #2196F3; border-right: 1px solid #2196F3; border-bottom: 1px solid #2196F3; }
 
@@ -101,12 +94,62 @@
         #msg-box { text-align: center; color: #FFAB40; margin-top: 10px; min-height: 20px; font-size: 14px;}
         #footer-msg { text-align: center; color: #666; margin-top: 30px; font-size: 12px; }
         .legend { display: inline-block; margin: 0 5px; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #000; font-weight: bold;}
+
+        /* ================= 手機版專用優化 (寬度小於 768px) ================= */
+        @media (max-width: 768px) {
+            body { padding: 5px; }
+            h1 { font-size: 22px; margin-bottom: 5px; }
+            .sub-title { margin-bottom: 10px; }
+
+            /* 摘要面板改為 3 欄 */
+            .summary-panel { 
+                display: grid; grid-template-columns: repeat(3, 1fr); 
+                padding: 5px; gap: 2px; background: transparent; border: none; box-shadow: none;
+            }
+            .summary-item { 
+                border: 1px solid #333; background: #1E1E1E; 
+                padding: 8px 2px; min-width: auto; border-radius: 6px;
+            }
+            .sum-label { font-size: 11px; margin-bottom: 2px; }
+            .sum-value { font-size: 18px; }
+            .sum-unit { font-size: 10px; }
+
+            /* 機組列表強制雙欄 (一排兩個) */
+            .grid-container {
+                grid-template-columns: 1fr 1fr; 
+                gap: 6px; margin-bottom: 20px;
+            }
+
+            /* 卡片緊湊化 */
+            .card { padding: 8px 6px; border-radius: 6px; }
+            .card-header { padding-bottom: 5px; margin-bottom: 5px; }
+            .unit-name { font-size: 18px; }
+            .phase-label { display: none; } /* 手機隱藏期別文字，改用邊框色識別 */
+            .state-tag { font-size: 10px; padding: 1px 4px; }
+            .status-light { width: 10px; height: 10px; }
+
+            /* 數據列更緊湊 */
+            .data-row { margin-bottom: 2px; padding-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+            .label { font-size: 12px; color: #999; }
+            .value { font-size: 16px; }
+            .unit { display: none; } /* 手機隱藏單位，節省空間 */
+
+            /* 🌟 關鍵：手機版隱藏不透光率 */
+            .opac-row { display: none !important; }
+
+            /* 圖表區調整 */
+            .chart-section { padding: 10px; }
+            .chart-controls { flex-direction: column; gap: 5px; }
+            select, input, button { width: 100%; box-sizing: border-box; }
+            
+            #footer-msg { font-size: 10px; }
+        }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>尖山發電廠 環境監控系統</h1>
+        <h1>尖山發電廠 CEMS 全能監控</h1>
         <div class="sub-title" id="last-update">系統啟動中...</div>
     </header>
 
@@ -114,21 +157,11 @@
 
     <div class="summary-panel">
         <div class="summary-item"><span class="sum-label">運轉機組</span><div><span class="sum-value" id="total-running">--</span><span class="sum-unit">部</span></div></div>
-        
         <div class="summary-item"><span class="sum-label">運轉鍋爐</span><div><span class="sum-value boiler-val" id="boiler-running">--</span><span class="sum-unit">座</span></div></div>
-
         <div class="summary-item"><span class="sum-label">NOx 平均</span><div><span class="sum-value avg-val" id="avg-nox">--</span><span class="sum-unit">ppm</span></div></div>
         <div class="summary-item"><span class="sum-label">SO2 平均</span><div><span class="sum-value avg-val" id="avg-so2">--</span><span class="sum-unit">ppm</span></div></div>
         
-        <div class="summary-item" style="border-left: 2px solid #448AFF; min-width: 140px;">
-            <span class="sum-label">澎湖 AQI (馬公)</span>
-            <div style="text-align: center;">
-                <span class="sum-value" id="env-aqi">--</span>
-                <div id="env-status" style="font-size:14px; font-weight:bold; margin-top:2px;">--</div>
-                <div id="env-pollutant" style="font-size:11px; color:#bbb; margin-top:2px;"></div>
-            </div>
-        </div>
-
+        <div class="summary-item" style="border-left: 2px solid #448AFF;"><span class="sum-label">澎湖 AQI</span><div><span class="sum-value aqi-val" id="env-aqi">--</span><span class="sum-unit" id="env-status" style="font-size:14px; font-weight:bold; color:#aaa;"></span></div></div>
         <div class="summary-item"><span class="sum-label">湖西鄉 氣溫</span><div><span class="sum-value weather-val" id="env-temp">--</span><span class="sum-unit">℃</span></div></div>
         <div class="summary-item"><span class="sum-label">環境風速</span><div><span class="sum-value weather-val" id="env-wind">--</span><span class="sum-unit">m/s</span></div></div>
         <div class="summary-item"><span class="sum-label">風向</span><div><span class="sum-value weather-val" id="env-dir">--</span><span class="sum-unit" style="font-size:16px"></span></div></div>
@@ -146,6 +179,7 @@
                 <option value="TEMP">溫度 (Temp)</option>
                 <option value="O2">氧氣 (O2)</option>
                 <option value="FLOW">排放流率 (Flow)</option>
+                <option value="OPAC" style="color:#FFD700;">不透光率 (Opac)</option>
             </select>
             <input type="date" id="sel-date">
             <button onclick="queryHistory()">🔍 查詢繪圖</button>
@@ -157,11 +191,11 @@
     </div>
     
     <div id="footer-msg">
-        資料來源：環境部 CEMS (AQX_P_186) | AQI | Open-Meteo (湖西氣象)<br>
+        資料來源：環境部 15分(AQX_P_186) & 6分(AQX_P_185) | AQI | Open-Meteo<br>
         <span class="legend" style="background:#00E676; color:black;">一期</span> 1~4號機
         <span class="legend" style="background:#2979FF; color:white;">二期</span> 5~12號機<br>
-        <span class="legend" style="background:#FFD700;">黃色預警</span> NOx>300 | SO2>120 
-        <span class="legend" style="background:#FF5252;">紅色超標</span> NOx>363 | SO2>133
+        <span class="legend" style="background:#FFD700;">黃色預警</span> NOx>300 | SO2>120 | 不透光>8
+        <span class="legend" style="background:#FF5252;">紅色超標</span> NOx>363 | SO2>133 | 不透光>40
     </div>
 
     <script>
@@ -174,7 +208,7 @@
 
         const API_KEY = '473ceb6e-8b72-4fc3-832e-183f324588ad';
         const CONTROL_ID = 'X0501232'; 
-        const RULES = { NOX: { warn: 300, limit: 363 }, SO2: { warn: 120, limit: 133 } };
+        const RULES = { NOX: { warn: 300, limit: 363 }, SO2: { warn: 120, limit: 133 }, OPAC: { warn: 8, limit: 40 } };
         const BOILER_UNITS = [1, 2, 3, 4, 5, 7, 9, 11];
 
         const polNoMap = {};
@@ -185,7 +219,11 @@
             idToPolNo[i] = pCode;
         }
 
-        // ===================== 初始化 =====================
+        let globalUnits = {};
+        for(let i=1; i<=12; i++) {
+            globalUnits[i] = { nox: null, so2: null, o2: null, temp: null, flow: null, opac: null, isRunning: false, statusText: "停機", statusClass: "state-tag" };
+        }
+
         function initDashboard() {
             const container = document.getElementById('dashboard');
             if(!container) return;
@@ -210,6 +248,7 @@
                         <div class="data-row"><span class="label">溫度</span><div class="value-group"><span class="value val-info" id="temp-${i}">--</span><span class="unit">℃</span></div></div>
                         <div class="data-row"><span class="label">氧氣</span><div class="value-group"><span class="value val-info" id="o2-${i}">--</span><span class="unit">%</span></div></div>
                         <div class="data-row"><span class="label">流率</span><div class="value-group"><span class="value val-info" id="flow-${i}">--</span><span class="unit">CMH</span></div></div>
+                        <div class="data-row opac-row"><span class="label">不透光</span><div class="value-group"><span class="value val-normal" id="opac-${i}">--</span><span class="unit">%</span></div></div>
                     </div>`;
             }
             container.innerHTML = html;
@@ -231,69 +270,98 @@
 
         // ===================== 資料抓取 =====================
 
-        async function fetchCems() {
+        async function fetch15MinData() {
             const updateLabel = document.getElementById('last-update');
             updateLabel.innerText = "更新中...";
             const URL = `https://data.moenv.gov.tw/api/v2/aqx_p_186?api_key=${API_KEY}&limit=1000&sort=m_time desc&format=json&filters=cno,eq,${CONTROL_ID}`;
             
             try {
                 const res = await fetch(URL);
-                if(!res.ok) throw new Error(res.status);
                 const data = await res.json();
                 if (data.records && data.records.length > 0) {
-                    processCemsData(data.records);
+                    processData(data.records, "15min");
                     const now = new Date();
                     updateLabel.innerText = `資料時間: ${data.records[0].m_time} (更新: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')})`;
                     updateLabel.style.color = "#00E676";
                 }
+            } catch (e) { console.error("15min Error:", e); }
+            
+            fetch6MinOpacity();
+        }
+
+        async function fetch6MinOpacity() {
+            // 6分鐘資料依然要抓，只是手機版CSS會隱藏顯示，電腦版會顯示
+            const cityEncoded = encodeURIComponent('澎湖縣');
+            const URL = `https://data.moenv.gov.tw/api/v2/aqx_p_185?api_key=${API_KEY}&limit=1000&sort=m_time desc&format=json&filters=epb_county,eq,${cityEncoded}`;
+            const PROXY_URL = `https://corsproxy.io/?${encodeURIComponent(URL)}`;
+
+            try {
+                const res = await fetch(PROXY_URL);
+                const data = await res.json();
+                if (data.records && data.records.length > 0) {
+                    processData(data.records, "6min"); 
+                }
             } catch (e) { 
-                console.error("CEMS Error:", e); 
-                updateLabel.innerText = "連線失敗"; 
-                updateLabel.style.color = "red";
+                console.log("6min Proxy Error:", e);
+                try {
+                    const res2 = await fetch(URL);
+                    const data2 = await res2.json();
+                    if (data2.records && data2.records.length > 0) processData(data2.records, "6min");
+                } catch(e2) {}
             }
         }
 
-        // 🌟 AQI 抓取與顯示邏輯
+        function processData(records, source) {
+            records.forEach(r => {
+                if (source === "6min" && r.cno !== CONTROL_ID) return;
+
+                let id = polNoMap[r.polno || r.PolNo];
+                if (id) {
+                    let name = r.itemdesc || ""; 
+                    let val = parseFloat(r.m_value);
+                    
+                    if (source === "15min") {
+                        let code = r.code2 || "";
+                        if (code === "NA10") { globalUnits[id].isRunning = true; globalUnits[id].statusText = "運轉中"; globalUnits[id].statusClass = "state-tag state-run"; }
+                        else if (code === "NA20") { globalUnits[id].isRunning = true; globalUnits[id].statusText = "運轉/校正"; globalUnits[id].statusClass = "state-tag state-cal"; }
+                        else if (code === "FA20") { globalUnits[id].isRunning = false; globalUnits[id].statusText = "停機/校正"; globalUnits[id].statusClass = "state-tag state-cal"; }
+                        else { globalUnits[id].isRunning = false; globalUnits[id].statusText = "停機"; globalUnits[id].statusClass = "state-tag"; }
+
+                        if (name.includes("氮氧化物") || name.includes("NOx")) globalUnits[id].nox = val;
+                        if (name.includes("二氧化硫") || name.includes("SO2")) globalUnits[id].so2 = val;
+                        if (name.includes("氧氣") || name.includes("O2")) globalUnits[id].o2 = val;
+                        if (name.includes("溫度") || name.includes("Temp")) globalUnits[id].temp = val;
+                        if (name.includes("流率") || name.includes("Flow")) globalUnits[id].flow = val;
+                        if (name.includes("不透光") || name.includes("Opac")) globalUnits[id].opac = val;
+                    } 
+                    else if (source === "6min") {
+                        if (name.includes("不透光") || name.includes("Opac")) globalUnits[id].opac = val;
+                    }
+                }
+            });
+
+            for(let i=1; i<=12; i++) updateCard(i, globalUnits[i]);
+            updateAverage(globalUnits);
+        }
+
         async function fetchEnvData() {
             try {
                 const res = await fetch(`https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=${API_KEY}&limit=1000&format=json`);
                 const data = await res.json();
                 const penghu = data.records.find(r => r.sitename === '馬公');
-                
-                const aqiEl = document.getElementById('env-aqi');
-                const statusEl = document.getElementById('env-status');
-                const polEl = document.getElementById('env-pollutant');
-
                 if(penghu) {
-                    aqiEl.innerText = penghu.aqi;
-                    statusEl.innerText = penghu.status; 
+                    document.getElementById('env-aqi').innerText = penghu.aqi;
+                    const statusEl = document.getElementById('env-status');
+                    statusEl.innerText = penghu.status;
+                    const pollutant = penghu.pollutant || "";
+                    if(pollutant) statusEl.innerText += ` (${pollutant})`;
                     
-                    // 顯示指標污染物 (若有)
-                    if (penghu.pollutant) {
-                        polEl.innerText = `(${penghu.pollutant})`;
-                    } else {
-                        polEl.innerText = "";
-                    }
-
                     let aqi = parseInt(penghu.aqi);
-                    let color = "#ccc";
-
-                    // 台灣 AQI 顏色標準
-                    if(aqi <= 50) { color = "#00E676"; } // 綠 (良好)
-                    else if(aqi <= 100) { color = "#FFFF00"; } // 黃 (普通)
-                    else if(aqi <= 150) { color = "#FF9800"; } // 橘 (對敏感族群不健康)
-                    else if(aqi <= 200) { color = "#FF5252"; } // 紅 (不健康)
-                    else if(aqi <= 300) { color = "#9C27B0"; } // 紫 (非常不健康)
-                    else { color = "#795548"; } // 褐 (危害)
-
-                    aqiEl.style.color = color;
+                    let color = aqi<=50 ? "#00E676" : (aqi<=100 ? "#FFFF00" : (aqi<=150 ? "#FF9800" : (aqi<=200 ? "#FF5252" : "#9C27B0")));
+                    document.getElementById('env-aqi').style.color = color;
                     statusEl.style.color = color;
-
-                } else {
-                    aqiEl.innerText = "--";
-                    statusEl.innerText = "無資料";
                 }
-            } catch(e) { console.log("AQI Error"); }
+            } catch(e) { }
 
             try {
                 const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=23.58&longitude=119.67&current=temperature_2m,wind_speed_10m,wind_direction_10m&timezone=auto`);
@@ -303,45 +371,17 @@
                     document.getElementById('env-wind').innerText = data.current.wind_speed_10m;
                     const deg = data.current.wind_direction_10m;
                     let dirStr = deg + "°";
-                    if (deg >= 337.5 || deg < 22.5) dirStr += " (北)";
-                    else if (deg >= 22.5 && deg < 67.5) dirStr += " (東北)";
-                    else if (deg >= 67.5 && deg < 112.5) dirStr += " (東)";
-                    else if (deg >= 112.5 && deg < 157.5) dirStr += " (東南)";
-                    else if (deg >= 157.5 && deg < 202.5) dirStr += " (南)";
-                    else if (deg >= 202.5 && deg < 247.5) dirStr += " (西南)";
-                    else if (deg >= 247.5 && deg < 292.5) dirStr += " (西)";
-                    else if (deg >= 292.5 && deg < 337.5) dirStr += " (西北)";
+                    if (deg >= 337.5 || deg < 22.5) dirStr = "北";
+                    else if (deg >= 22.5 && deg < 67.5) dirStr = "東北";
+                    else if (deg >= 67.5 && deg < 112.5) dirStr = "東";
+                    else if (deg >= 112.5 && deg < 157.5) dirStr = "東南";
+                    else if (deg >= 157.5 && deg < 202.5) dirStr = "南";
+                    else if (deg >= 202.5 && deg < 247.5) dirStr = "西南";
+                    else if (deg >= 247.5 && deg < 292.5) dirStr = "西";
+                    else if (deg >= 292.5 && deg < 337.5) dirStr = "西北";
                     document.getElementById('env-dir').innerText = dirStr;
                 }
-            } catch(e) { console.log("Weather Error"); }
-        }
-
-        function processCemsData(records) {
-            let units = {};
-            for(let i=1; i<=12; i++) units[i] = { nox: null, so2: null, o2: null, temp: null, flow: null, isRunning: false, statusText: "停機", statusClass: "state-tag" };
-
-            records.forEach(r => {
-                let id = polNoMap[r.polno || r.PolNo];
-                if (id) {
-                    let name = r.itemdesc || ""; 
-                    let val = parseFloat(r.m_value);
-                    let code = r.code2 || "";
-
-                    if (code === "NA10") { units[id].isRunning = true; units[id].statusText = "運轉中"; units[id].statusClass = "state-tag state-run"; }
-                    else if (code === "NA20") { units[id].isRunning = true; units[id].statusText = "運轉/校正"; units[id].statusClass = "state-tag state-cal"; }
-                    else if (code === "FA20") { units[id].isRunning = false; units[id].statusText = "停機/校正"; units[id].statusClass = "state-tag state-cal"; }
-                    else { units[id].isRunning = false; units[id].statusText = "停機"; units[id].statusClass = "state-tag"; }
-
-                    if (name.includes("氮氧化物") || name.includes("NOx")) { if(units[id].nox === null) units[id].nox = val; }
-                    else if (name.includes("二氧化硫") || name.includes("SO2")) { if(units[id].so2 === null) units[id].so2 = val; }
-                    else if (name.includes("氧氣") || name.includes("O2")) { if(units[id].o2 === null) units[id].o2 = val; }
-                    else if (name.includes("溫度") || name.includes("Temp")) { if(units[id].temp === null) units[id].temp = val; }
-                    else if (name.includes("流率") || name.includes("Flow")) { if(units[id].flow === null) units[id].flow = val; }
-                }
-            });
-
-            for(let i=1; i<=12; i++) updateCard(i, units[i]);
-            updateAverage(units);
+            } catch(e) { }
         }
 
         function updateAverage(units) {
@@ -378,14 +418,15 @@
 
             updateVal('NOX', data.nox, `nox-${id}`);
             updateVal('SO2', data.so2, `so2-${id}`);
+            updateVal('OPAC', data.opac, `opac-${id}`); 
             updateVal('NORMAL', data.o2, `o2-${id}`);
             updateVal('NORMAL', data.temp, `temp-${id}`);
             updateVal('NORMAL', data.flow, `flow-${id}`);
 
             const light = document.getElementById(`status-${id}`);
             let status = "ok";
-            if ((data.nox > RULES.NOX.limit) || (data.so2 > RULES.SO2.limit)) status = "danger";
-            else if ((data.nox > RULES.NOX.warn) || (data.so2 > RULES.SO2.warn)) status = "warn";
+            if ((data.nox > RULES.NOX.limit) || (data.so2 > RULES.SO2.limit) || (data.opac > RULES.OPAC.limit)) status = "danger";
+            else if ((data.nox > RULES.NOX.warn) || (data.so2 > RULES.SO2.warn) || (data.opac > RULES.OPAC.warn)) status = "warn";
             
             if(data.isRunning || data.nox !== null) light.className = `status-light status-${status}`;
             else light.className = "status-light";
@@ -417,12 +458,29 @@
 
             if (!dateStr) { alert("請選擇日期"); return; }
             const polNo = idToPolNo[unitId]; 
-            const URL = `https://data.moenv.gov.tw/api/v2/aqx_p_186?api_key=${API_KEY}&limit=1000&format=json&filters=cno,eq,${CONTROL_ID}|polno,eq,${polNo}&sort=m_time desc`;
+            
+            let URL = "";
+            let useProxy = false;
+
+            if (itemType === 'OPAC') {
+                const cityEncoded = encodeURIComponent('澎湖縣');
+                URL = `https://data.moenv.gov.tw/api/v2/aqx_p_185?api_key=${API_KEY}&limit=1000&format=json&filters=epb_county,eq,${cityEncoded}|polno,eq,${polNo}&sort=m_time desc`;
+                useProxy = true;
+            } else {
+                URL = `https://data.moenv.gov.tw/api/v2/aqx_p_186?api_key=${API_KEY}&limit=1000&format=json&filters=cno,eq,${CONTROL_ID}|polno,eq,${polNo}&sort=m_time desc`;
+            }
 
             try {
                 btn.innerText = "下載中..."; btn.disabled = true;
-                msgBox.innerText = `正在下載...`;
-                const res = await fetch(URL);
+                msgBox.innerText = `正在下載資料...`;
+                
+                let res;
+                if (useProxy) {
+                    res = await fetch(`https://corsproxy.io/?${encodeURIComponent(URL)}`);
+                } else {
+                    res = await fetch(URL);
+                }
+
                 const data = await res.json();
                 btn.innerText = "🔍 查詢繪圖"; btn.disabled = false;
                 if (data.records && data.records.length > 0) {
@@ -440,9 +498,14 @@
 
         function drawChart(records, itemType, unitId, dateLabel) {
             const chartData = [];
-            const keywords = { 'NOX': ['氮氧化物', 'NOx'], 'SO2': ['二氧化硫', 'SO2'], 'O2': ['氧氣', 'O2'], 'TEMP': ['溫度', 'Temp'], 'FLOW': ['流率', 'Flow'] };
+            const keywords = { 
+                'NOX': ['氮氧化物', 'NOx'], 'SO2': ['二氧化硫', 'SO2'], 
+                'O2': ['氧氣', 'O2'], 'TEMP': ['溫度', 'Temp'], 'FLOW': ['流率', 'Flow'],
+                'OPAC': ['不透光', 'Opac'] 
+            };
 
             records.forEach(r => {
+                if (r.cno && r.cno !== CONTROL_ID) return;
                 if (!r.m_time.startsWith(dateLabel)) return;
                 let name = r.itemdesc || "";
                 if (keywords[itemType].some(k => name.includes(k))) {
@@ -452,7 +515,7 @@
             chartData.sort((a, b) => new Date(a.x) - new Date(b.x));
 
             if (chartData.length === 0) {
-                document.getElementById('msg-box').innerText = `⚠️ 機組 #${unitId} 在 ${dateLabel} 沒有 ${itemType} 的數據。`;
+                document.getElementById('msg-box').innerText = `⚠️ 該時段無 ${itemType} 數據。`;
                 if(myChart) myChart.clear(); return;
             }
 
@@ -461,6 +524,7 @@
             let limitValue = null;
             if (itemType === 'NOX') { labelName = '氮氧化物 (ppm)'; color = '#00E5FF'; limitValue = RULES.NOX.limit; }
             else if (itemType === 'SO2') { labelName = '二氧化硫 (ppm)'; color = '#E040FB'; limitValue = RULES.SO2.limit; }
+            else if (itemType === 'OPAC') { labelName = '不透光率 (%)'; color = '#FFD700'; limitValue = RULES.OPAC.limit; }
             else if (itemType === 'O2') { labelName = '氧氣 (%)'; color = '#B2FF59'; }
             else if (itemType === 'TEMP') { labelName = '溫度 (℃)'; color = '#FF6E40'; }
             else if (itemType === 'FLOW') { labelName = '排放流率 (CMH)'; color = '#448AFF'; }
@@ -486,9 +550,9 @@
             myChart = new Chart(ctx, chartConfig);
         }
 
-        fetchCems();     
+        fetch15MinData();     
         fetchEnvData();
-        setInterval(fetchCems, 60000);
+        setInterval(fetch15MinData, 60000);
         setInterval(fetchEnvData, 300000);
 
     </script>
