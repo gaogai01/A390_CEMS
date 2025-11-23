@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>尖山發電廠 CEMS (防火牆穿越版)</title>
+    <title>尖山發電廠 CEMS 全能監控 (順序調整版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="console.error('Chart.js blocked')"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -15,7 +15,7 @@
         h1 { margin: 0; color: #448AFF; font-size: 28px; }
         .sub-title { color: #888; font-size: 14px; margin-top: 5px; }
 
-        /* 除錯視窗 (紅底白字) */
+        /* 除錯視窗 */
         #debug-box { 
             display: none; 
             background: #b71c1c; color: #fff; border: 1px solid #ff5252;
@@ -115,10 +115,10 @@
         <div class="chart-controls">
             <select id="sel-unit"></select>
             <select id="sel-item">
-                <option value="NOX">氮氧化物 (NOx)</option>
                 <option value="SO2">二氧化硫 (SO2)</option>
-                <option value="O2">氧氣 (O2)</option>
+                <option value="NOX">氮氧化物 (NOx)</option>
                 <option value="TEMP">溫度 (Temp)</option>
+                <option value="O2">氧氣 (O2)</option>
                 <option value="FLOW">排放流率 (Flow)</option>
             </select>
             <input type="date" id="sel-date">
@@ -160,24 +160,50 @@
             idToPolNo[i] = pCode;
         }
 
-        // ===================== 初始化 (保證執行) =====================
+        // ===================== 初始化 =====================
         function initDashboard() {
             const container = document.getElementById('dashboard');
             if(!container) return;
             
             let html = '';
             for (let i = 1; i <= 12; i++) {
+                // 🌟 關鍵修改：卡片內的顯示順序
+                // 1. SO2
+                // 2. NOx
+                // 3. Temp
+                // 4. O2
+                // 5. Flow
                 html += `
                     <div class="card" id="card-${i}">
                         <div class="card-header">
                             <div><span class="unit-name">#${i} 機組</span> <span class="state-tag" id="state-${i}">停機</span></div>
                             <div class="status-light" id="status-${i}"></div>
                         </div>
-                        <div class="data-row"><span class="label">NOx</span><div><span class="value val-normal" id="nox-${i}">--</span><span class="unit">ppm</span></div></div>
-                        <div class="data-row"><span class="label">SO2</span><div><span class="value val-normal" id="so2-${i}">--</span><span class="unit">ppm</span></div></div>
-                        <div class="data-row"><span class="label">氧氣</span><div><span class="value val-info" id="o2-${i}">--</span><span class="unit">%</span></div></div>
-                        <div class="data-row"><span class="label">溫度</span><div><span class="value val-info" id="temp-${i}">--</span><span class="unit">℃</span></div></div>
-                        <div class="data-row"><span class="label">流率</span><div><span class="value val-info" id="flow-${i}">--</span><span class="unit">CMH</span></div></div>
+                        
+                        <div class="data-row">
+                            <span class="label">SO2</span>
+                            <div class="value-group"><span class="value val-normal" id="so2-${i}">--</span><span class="unit">ppm</span></div>
+                        </div>
+                        
+                        <div class="data-row">
+                            <span class="label">NOx</span>
+                            <div class="value-group"><span class="value val-normal" id="nox-${i}">--</span><span class="unit">ppm</span></div>
+                        </div>
+                        
+                        <div class="data-row">
+                            <span class="label">溫度</span>
+                            <div class="value-group"><span class="value val-info" id="temp-${i}">--</span><span class="unit">℃</span></div>
+                        </div>
+
+                        <div class="data-row">
+                            <span class="label">氧氣</span>
+                            <div class="value-group"><span class="value val-info" id="o2-${i}">--</span><span class="unit">%</span></div>
+                        </div>
+                        
+                        <div class="data-row">
+                            <span class="label">流率</span>
+                            <div class="value-group"><span class="value val-info" id="flow-${i}">--</span><span class="unit">CMH</span></div>
+                        </div>
                     </div>`;
             }
             container.innerHTML = html;
@@ -195,8 +221,7 @@
             const dateEl = document.getElementById('sel-date');
             if(dateEl) dateEl.valueAsDate = new Date();
         }
-
-        // 立即初始化畫面 (不等待網路)
+        
         try { initDashboard(); } catch(e) { console.error("Init failed:", e); }
 
         // ===================== 資料抓取 =====================
@@ -332,7 +357,6 @@
             if(val !== null) {
                 if (val > 100) el.innerText = val.toFixed(0); 
                 else el.innerText = val.toFixed(2);
-                
                 let cls = "value val-info";
                 if (type !== 'NORMAL') {
                     cls = "value val-normal";
@@ -343,13 +367,12 @@
             }
         }
 
-        // ===================== 歷史圖表 (含安全檢查) =====================
+        // ===================== 歷史圖表 =====================
         let myChart = null;
 
         async function queryHistory() {
-            // 檢查圖表庫是否載入成功
             if (typeof Chart === 'undefined') {
-                alert("圖表模組載入失敗 (可能被防火牆阻擋)，無法繪圖。\n但上方即時監控功能不受影響。");
+                alert("圖表元件載入失敗，請檢查網路");
                 return;
             }
 
@@ -424,14 +447,12 @@
                 }
             };
 
-            // 安全檢查：確認插件是否可用 (如果被防火牆擋住，就不畫紅線，但圖表依然能顯示)
             if (limitValue && typeof Chart.registry.plugins.get('annotation') !== 'undefined') {
                  chartConfig.options.plugins.annotation = { annotations: { line1: { type: 'line', yMin: limitValue, yMax: limitValue, borderColor: '#FF5252', borderWidth: 2, borderDash: [6, 6], label: { display: true, content: `上限: ${limitValue}`, color: '#FF5252', position: 'end' } } } };
             }
             myChart = new Chart(ctx, chartConfig);
         }
 
-        // 啟動
         fetchCems();     
         fetchEnvData();  
         setInterval(fetchCems, 60000);
