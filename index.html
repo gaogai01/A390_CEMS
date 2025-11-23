@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>尖山發電廠 環境監控系統</title>
+    <title>尖山發電廠 CEMS 監控系統</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -18,31 +18,30 @@
         /* Debug Window */
         #debug-box { display: none; background: #b71c1c; color: #fff; padding: 15px; margin-bottom: 20px; border-radius: 8px; font-family: monospace; border: 1px solid #ff5252;}
 
-        /* --- 全廠摘要面板 (新版面) --- */
+        /* --- 全廠摘要面板 --- */
         .summary-panel {
             display: flex; justify-content: center; gap: 0; 
-            max-width: 1600px; margin: 0 auto 25px auto;
+            max-width: 1400px; margin: 0 auto 25px auto;
             background: #1E1E1E; border-radius: 12px; border: 1px solid #448AFF;
             box-shadow: 0 0 15px rgba(68, 138, 255, 0.15);
-            overflow: hidden; /* 讓邊角圓滑 */
+            overflow: hidden; 
             flex-wrap: wrap;
         }
         .summary-item { 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            flex: 1; min-width: 120px;
-            border-right: 1px solid #333; padding: 15px 10px; 
+            flex: 1; min-width: 110px;
+            border-right: 1px solid #333; padding: 15px 5px; 
         }
         .summary-item:last-child { border-right: none; }
         
-        .sum-label { font-size: 13px; color: #aaa; margin-bottom: 8px; text-align: center; letter-spacing: 1px;}
+        .sum-label { font-size: 13px; color: #aaa; margin-bottom: 8px; text-align: center; letter-spacing: 1px; white-space: nowrap;}
         .sum-value { font-size: 26px; font-weight: bold; font-family: 'Courier New', monospace; color: #fff; }
         .sum-unit { font-size: 12px; color: #666; margin-left: 3px;}
         
-        .avg-val { color: #00E676; } /* 平均值綠色 */
-        .weather-val { color: #FFAB40; } /* 氣象橘色 */
-        .aqi-good { color: #00E676; }    /* AQI 良好 */
-        .aqi-mod { color: #FFFF00; }     /* AQI 普通 */
-        .aqi-bad { color: #FF5252; }     /* AQI 不良 */
+        .avg-val { color: #00E676; } 
+        .boiler-val { color: #FF4081; }
+        .weather-val { color: #FFAB40; } 
+        .aqi-val { color: #00E5FF; }
 
         /* Grid */
         .grid-container {
@@ -54,12 +53,27 @@
             background-color: #1E1E1E; border-radius: 12px; padding: 15px;
             border: 1px solid #333; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
             transition: background-color 0.3s;
+            position: relative;
+            border-top-width: 4px; /* 頂部顯示期別顏色 */
         }
-        .card-running { background-color: #0D3050 !important; border: 1px solid #2196F3; }
+        
+        /* 🌟 期別顏色設定 (一期綠、二期藍) */
+        .phase-1 { border-top-color: #00E676; } 
+        .phase-2 { border-top-color: #2979FF; } 
+
+        .phase-label {
+            font-size: 12px; margin-left: 8px; padding: 2px 6px; border-radius: 4px;
+            font-weight: bold; vertical-align: middle;
+        }
+        .bg-phase-1 { background-color: #00E676; color: #000; } /* 綠底黑字 */
+        .bg-phase-2 { background-color: #2979FF; color: #fff; } /* 藍底白字 */
+
+        .card-running { background-color: #0D3050 !important; border-left: 1px solid #2196F3; border-right: 1px solid #2196F3; border-bottom: 1px solid #2196F3; }
 
         .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; }
-        .unit-name { font-size: 22px; font-weight: bold; color: #fff; }
-        .state-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #333; color: #888; font-weight: bold;}
+        .unit-name { font-size: 22px; font-weight: bold; color: #fff; vertical-align: middle; }
+        
+        .state-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #333; color: #888; font-weight: bold; margin-left: 5px;}
         .state-run { background: #2196F3; color: #fff; }
         .state-cal { background: #E040FB; color: #fff; }
 
@@ -93,7 +107,7 @@
 <body>
 
     <header>
-        <h1>尖山發電廠 環境監控系統</h1>
+        <h1>尖山發電廠 CEMS 監控系統</h1>
         <div class="sub-title" id="last-update">系統啟動中...</div>
     </header>
 
@@ -101,29 +115,16 @@
 
     <div class="summary-panel">
         <div class="summary-item"><span class="sum-label">運轉機組</span><div><span class="sum-value" id="total-running">--</span><span class="sum-unit">部</span></div></div>
+        
+        <div class="summary-item"><span class="sum-label">運轉鍋爐</span><div><span class="sum-value boiler-val" id="boiler-running">--</span><span class="sum-unit">座</span></div></div>
+
         <div class="summary-item"><span class="sum-label">NOx 平均</span><div><span class="sum-value avg-val" id="avg-nox">--</span><span class="sum-unit">ppm</span></div></div>
         <div class="summary-item"><span class="sum-label">SO2 平均</span><div><span class="sum-value avg-val" id="avg-so2">--</span><span class="sum-unit">ppm</span></div></div>
         
-        <div class="summary-item" style="border-left: 2px solid #448AFF;">
-            <span class="sum-label">澎湖縣 AQI</span>
-            <div>
-                <span class="sum-value" id="env-aqi">--</span>
-                <span class="sum-unit" id="env-status" style="font-size:15px; font-weight:bold; color:#aaa;">--</span>
-            </div>
-        </div>
-
-        <div class="summary-item">
-            <span class="sum-label">湖西鄉 氣溫</span>
-            <div><span class="sum-value weather-val" id="env-temp">--</span><span class="sum-unit">℃</span></div>
-        </div>
-        <div class="summary-item">
-            <span class="sum-label">環境風速</span>
-            <div><span class="sum-value weather-val" id="env-wind">--</span><span class="sum-unit">m/s</span></div>
-        </div>
-        <div class="summary-item">
-            <span class="sum-label">風向</span>
-            <div><span class="sum-value weather-val" id="env-dir">--</span><span class="sum-unit" style="font-size:16px"></span></div>
-        </div>
+        <div class="summary-item" style="border-left: 2px solid #448AFF;"><span class="sum-label">澎湖 AQI</span><div><span class="sum-value aqi-val" id="env-aqi">--</span><span class="sum-unit" id="env-status" style="font-size:14px; font-weight:bold; color:#aaa;"></span></div></div>
+        <div class="summary-item"><span class="sum-label">湖西鄉 氣溫</span><div><span class="sum-value weather-val" id="env-temp">--</span><span class="sum-unit">℃</span></div></div>
+        <div class="summary-item"><span class="sum-label">環境風速</span><div><span class="sum-value weather-val" id="env-wind">--</span><span class="sum-unit">m/s</span></div></div>
+        <div class="summary-item"><span class="sum-label">風向</span><div><span class="sum-value weather-val" id="env-dir">--</span><span class="sum-unit" style="font-size:16px"></span></div></div>
     </div>
 
     <div id="dashboard" class="grid-container">介面載入中...</div>
@@ -149,10 +150,11 @@
     </div>
     
     <div id="footer-msg">
-        資料來源：環境部 CEMS (AQX_P_186) | 環境部 AQI | Open-Meteo (湖西氣象)<br>
+        資料來源：環境部 CEMS (AQX_P_186) | AQI | Open-Meteo (湖西氣象)<br>
+        <span class="legend" style="background:#00E676; color:black;">一期</span> 1~4號機 (英)
+        <span class="legend" style="background:#2979FF; color:white;">二期</span> 5~12號機 (德)<br>
         <span class="legend" style="background:#FFD700;">黃色預警</span> NOx>300 | SO2>120 
-        <span class="legend" style="background:#FF5252;">紅色超標</span> NOx>363 | SO2>133<br>
-        <span style="color:#2196F3; font-weight:bold;">藍色背景</span> = 運轉 (NA10/NA20) | <span style="color:#E040FB; font-weight:bold;">紫色標籤</span> = 校正中
+        <span class="legend" style="background:#FF5252;">紅色超標</span> NOx>363 | SO2>133
     </div>
 
     <script>
@@ -166,6 +168,7 @@
         const API_KEY = '473ceb6e-8b72-4fc3-832e-183f324588ad';
         const CONTROL_ID = 'X0501232'; 
         const RULES = { NOX: { warn: 300, limit: 363 }, SO2: { warn: 120, limit: 133 } };
+        const BOILER_UNITS = [1, 2, 3, 4, 5, 7, 9, 11];
 
         const polNoMap = {};
         const idToPolNo = {};
@@ -181,10 +184,19 @@
             if(!container) return;
             let html = '';
             for (let i = 1; i <= 12; i++) {
+                // 🌟 區分一期(綠) 與 二期(藍)
+                let phaseClass = (i <= 4) ? "phase-1" : "phase-2";
+                let phaseLabelClass = (i <= 4) ? "bg-phase-1" : "bg-phase-2";
+                let phaseText = (i <= 4) ? "一期" : "二期";
+
                 html += `
-                    <div class="card" id="card-${i}">
+                    <div class="card ${phaseClass}" id="card-${i}">
                         <div class="card-header">
-                            <div><span class="unit-name">#${i} 機組</span> <span class="state-tag" id="state-${i}">停機</span></div>
+                            <div>
+                                <span class="unit-name">#${i}</span>
+                                <span class="phase-label ${phaseLabelClass}">${phaseText}</span>
+                                <span class="state-tag" id="state-${i}">停機</span>
+                            </div>
                             <div class="status-light" id="status-${i}"></div>
                         </div>
                         <div class="data-row"><span class="label">SO2</span><div class="value-group"><span class="value val-normal" id="so2-${i}">--</span><span class="unit">ppm</span></div></div>
@@ -235,44 +247,32 @@
             }
         }
 
-        // 🌟 抓取環境數據 (AQI + Weather)
         async function fetchEnvData() {
-            // 1. AQI (抓取馬公站)
+            // AQI
             try {
                 const res = await fetch(`https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=${API_KEY}&limit=1000&format=json`);
                 const data = await res.json();
-                // 搜尋馬公測站
                 const penghu = data.records.find(r => r.sitename === '馬公');
-                
-                const aqiEl = document.getElementById('env-aqi');
-                const statusEl = document.getElementById('env-status');
-
                 if(penghu) {
-                    aqiEl.innerText = penghu.aqi;
-                    statusEl.innerText = penghu.status; // 良好、普通...
-                    
-                    // 顏色判斷
+                    document.getElementById('env-aqi').innerText = penghu.aqi;
+                    const statusEl = document.getElementById('env-status');
+                    statusEl.innerText = penghu.status;
                     let aqi = parseInt(penghu.aqi);
                     if(aqi <= 50) { aqiEl.className = "sum-value aqi-good"; statusEl.className = "sum-unit aqi-good"; }
                     else if(aqi <= 100) { aqiEl.className = "sum-value aqi-mod"; statusEl.className = "sum-unit aqi-mod"; }
                     else { aqiEl.className = "sum-value aqi-bad"; statusEl.className = "sum-unit aqi-bad"; }
-                } else {
-                    aqiEl.innerText = "--";
-                    statusEl.innerText = "無資料";
                 }
-            } catch(e) { console.log("AQI Error"); }
+            } catch(e) { }
 
-            // 2. 氣象 (Open-Meteo, 湖西鄉坐標: 23.58, 119.67)
+            // Weather
             try {
                 const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=23.58&longitude=119.67&current=temperature_2m,wind_speed_10m,wind_direction_10m&timezone=auto`);
                 const data = await res.json();
                 if(data.current) {
                     document.getElementById('env-temp').innerText = data.current.temperature_2m;
                     document.getElementById('env-wind').innerText = data.current.wind_speed_10m;
-                    
                     const deg = data.current.wind_direction_10m;
                     let dirStr = deg + "°";
-                    // 簡易方位
                     if (deg >= 337.5 || deg < 22.5) dirStr += " (北)";
                     else if (deg >= 22.5 && deg < 67.5) dirStr += " (東北)";
                     else if (deg >= 67.5 && deg < 112.5) dirStr += " (東)";
@@ -281,10 +281,9 @@
                     else if (deg >= 202.5 && deg < 247.5) dirStr += " (西南)";
                     else if (deg >= 247.5 && deg < 292.5) dirStr += " (西)";
                     else if (deg >= 292.5 && deg < 337.5) dirStr += " (西北)";
-                    
                     document.getElementById('env-dir').innerText = dirStr;
                 }
-            } catch(e) { console.log("Weather Error"); }
+            } catch(e) { }
         }
 
         function processCemsData(records) {
@@ -317,18 +316,21 @@
 
         function updateAverage(units) {
             let runCount = 0;
+            let boilerCount = 0;
             let sumNox = 0, cntNox = 0;
             let sumSo2 = 0, cntSo2 = 0;
 
             for(let i=1; i<=12; i++) {
                 if (units[i].isRunning) {
                     runCount++;
+                    if (BOILER_UNITS.includes(i)) boilerCount++; 
                     if (units[i].nox !== null) { sumNox += units[i].nox; cntNox++; }
                     if (units[i].so2 !== null) { sumSo2 += units[i].so2; cntSo2++; }
                 }
             }
 
             document.getElementById('total-running').innerText = runCount;
+            document.getElementById('boiler-running').innerText = boilerCount;
             document.getElementById('avg-nox').innerText = cntNox > 0 ? Math.round(sumNox / cntNox) : "--";
             document.getElementById('avg-so2').innerText = cntSo2 > 0 ? Math.round(sumSo2 / cntSo2) : "--";
         }
@@ -338,8 +340,13 @@
             const state = document.getElementById(`state-${id}`);
             if(!card) return;
 
-            if(data.isRunning) { card.className = "card card-running"; }
-            else { card.className = "card"; }
+            // 保留一期/二期的邊框色，同時切換背景
+            // 技巧：只修改 background-color, 不覆蓋 border-top
+            if(data.isRunning) { 
+                card.classList.add("card-running");
+            } else { 
+                card.classList.remove("card-running");
+            }
 
             state.innerText = data.statusText;
             state.className = data.statusClass;
