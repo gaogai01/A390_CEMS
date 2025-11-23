@@ -3,32 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>尖山發電廠 CEMS 手機監控版</title>
+    <title>尖山發電廠 環境監控系統</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
     <style>
-        /* --- 基礎設定 (電腦版) --- */
         body { background-color: #121212; color: #ffffff; font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 20px; }
         header { text-align: center; margin-bottom: 20px; }
         h1 { margin: 0; color: #448AFF; font-size: 28px; }
         .sub-title { color: #888; font-size: 14px; margin-top: 5px; }
 
+        /* Debug Window */
         #debug-box { display: none; background: #b71c1c; color: #fff; padding: 15px; margin-bottom: 20px; border-radius: 8px; font-family: monospace; border: 1px solid #ff5252;}
 
-        /* 全廠摘要面板 */
+        /* --- 全廠摘要面板 --- */
         .summary-panel {
             display: flex; justify-content: center; gap: 0; 
             max-width: 1400px; margin: 0 auto 25px auto;
             background: #1E1E1E; border-radius: 12px; border: 1px solid #448AFF;
             box-shadow: 0 0 15px rgba(68, 138, 255, 0.15);
-            overflow: hidden; flex-wrap: wrap;
+            overflow: hidden; 
+            flex-wrap: wrap;
         }
         .summary-item { 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            flex: 1; min-width: 110px;
+            flex: 1; min-width: 120px;
             border-right: 1px solid #333; padding: 15px 5px; 
         }
         .summary-item:last-child { border-right: none; }
@@ -40,33 +41,41 @@
         .avg-val { color: #00E676; } 
         .boiler-val { color: #FF4081; }
         .weather-val { color: #FFAB40; } 
-        .aqi-val { color: #00E5FF; }
 
-        /* Grid (電腦版設定) */
+        /* Grid */
         .grid-container {
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px; max-width: 1600px; margin: 0 auto 40px auto;
         }
 
         .card {
             background-color: #1E1E1E; border-radius: 12px; padding: 15px;
             border: 1px solid #333; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-            transition: background-color 0.3s; position: relative;
+            transition: background-color 0.3s;
+            position: relative;
             border-top-width: 4px;
         }
+        
+        /* 期別顏色 */
         .phase-1 { border-top-color: #00E676; } 
         .phase-2 { border-top-color: #2979FF; } 
-        .phase-label { font-size: 12px; margin-left: 8px; padding: 2px 6px; border-radius: 4px; font-weight: bold; vertical-align: middle; }
+
+        .phase-label {
+            font-size: 12px; margin-left: 8px; padding: 2px 6px; border-radius: 4px;
+            font-weight: bold; vertical-align: middle;
+        }
         .bg-phase-1 { background-color: #00E676; color: #000; }
         .bg-phase-2 { background-color: #2979FF; color: #fff; }
+
         .card-running { background-color: #0D3050 !important; border-left: 1px solid #2196F3; border-right: 1px solid #2196F3; border-bottom: 1px solid #2196F3; }
 
         .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; }
         .unit-name { font-size: 22px; font-weight: bold; color: #fff; vertical-align: middle; }
+        
         .state-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #333; color: #888; font-weight: bold; margin-left: 5px;}
         .state-run { background: #2196F3; color: #fff; }
         .state-cal { background: #E040FB; color: #fff; }
+
         .status-light { width: 14px; height: 14px; border-radius: 50%; background-color: #444; border: 1px solid #000; }
         .status-ok { background-color: #00E676; box-shadow: 0 0 8px #00E676; } 
         .status-warn { background-color: #FFD700; box-shadow: 0 0 8px #FFD700; } 
@@ -76,6 +85,7 @@
         .label { color: #aaa; font-size: 15px; }
         .value { font-family: 'Courier New', monospace; font-size: 22px; font-weight: bold; }
         .unit { font-size: 12px; color: #bbb; margin-left: 3px; }
+
         .val-normal { color: #00E5FF; } 
         .val-warn { color: #FFD700; }    
         .val-danger { color: #FF5252; }  
@@ -84,50 +94,13 @@
         /* 圖表區 */
         .chart-section { max-width: 1600px; margin: 0 auto; background: #1E1E1E; padding: 20px; border-radius: 12px; border: 1px solid #333; }
         .chart-controls { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; background: #252525; padding: 15px; border-radius: 8px; }
-        select, input { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 6px; font-size: 16px; width: auto; }
+        select, input { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 6px; font-size: 16px; }
         button { background: #448AFF; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #2962FF; }
         
+        #msg-box { text-align: center; color: #FFAB40; margin-top: 10px; min-height: 20px; font-size: 14px;}
         #footer-msg { text-align: center; color: #666; margin-top: 30px; font-size: 12px; }
         .legend { display: inline-block; margin: 0 5px; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #000; font-weight: bold;}
-
-        /* ========================================= */
-        /* 🌟 關鍵：手機版專用樣式 (螢幕寬度 < 768px) */
-        /* ========================================= */
-        @media (max-width: 768px) {
-            body { padding: 10px; } /* 減少邊距 */
-            h1 { font-size: 20px; }
-            
-            /* 摘要面板變為 3欄 */
-            .summary-panel { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; padding: 5px; background: #333; border:none;}
-            .summary-item { border: none; background: #1E1E1E; padding: 10px 5px; width: 100%; box-sizing: border-box; min-width: auto; }
-            .sum-label { font-size: 11px; margin-bottom: 2px; }
-            .sum-value { font-size: 18px; }
-            .sum-unit { font-size: 10px; }
-
-            /* 🌟 卡片區強制變成 2 欄 (一排兩個) */
-            .grid-container {
-                grid-template-columns: 1fr 1fr; /* 強制兩欄 */
-                gap: 8px; /* 間距縮小 */
-            }
-
-            /* 卡片內容緊湊化 */
-            .card { padding: 8px; border-radius: 8px; border-top-width: 3px; }
-            .card-header { padding-bottom: 5px; margin-bottom: 5px; flex-wrap: wrap; }
-            .unit-name { font-size: 16px; }
-            .phase-label { display: none; } /* 手機版隱藏期別標籤省空間(已有顏色區分) */
-            .state-tag { font-size: 10px; padding: 1px 4px; margin-left: 2px; }
-            .status-light { width: 10px; height: 10px; }
-
-            /* 數據列緊湊化 */
-            .data-row { margin-bottom: 2px; padding-bottom: 2px; }
-            .label { font-size: 12px; }
-            .value { font-size: 16px; }
-            .unit { font-size: 10px; display: none; } /* 手機版隱藏單位省空間 */
-
-            /* 圖表控制項直排 */
-            .chart-controls { flex-direction: column; align-items: stretch; }
-            select, input, button { width: 100%; box-sizing: border-box; margin-bottom: 5px;}
-        }
     </style>
 </head>
 <body>
@@ -141,19 +114,30 @@
 
     <div class="summary-panel">
         <div class="summary-item"><span class="sum-label">運轉機組</span><div><span class="sum-value" id="total-running">--</span><span class="sum-unit">部</span></div></div>
+        
         <div class="summary-item"><span class="sum-label">運轉鍋爐</span><div><span class="sum-value boiler-val" id="boiler-running">--</span><span class="sum-unit">座</span></div></div>
+
         <div class="summary-item"><span class="sum-label">NOx 平均</span><div><span class="sum-value avg-val" id="avg-nox">--</span><span class="sum-unit">ppm</span></div></div>
         <div class="summary-item"><span class="sum-label">SO2 平均</span><div><span class="sum-value avg-val" id="avg-so2">--</span><span class="sum-unit">ppm</span></div></div>
-        <div class="summary-item"><span class="sum-label">澎湖 AQI</span><div><span class="sum-value aqi-val" id="env-aqi">--</span></div></div>
-        <div class="summary-item"><span class="sum-label">湖西 氣溫</span><div><span class="sum-value weather-val" id="env-temp">--</span><span class="sum-unit">℃</span></div></div>
-        <div class="summary-item"><span class="sum-label">風速</span><div><span class="sum-value weather-val" id="env-wind">--</span><span class="sum-unit">m/s</span></div></div>
-        <div class="summary-item"><span class="sum-label">風向</span><div><span class="sum-value weather-val" id="env-dir">--</span></div></div>
+        
+        <div class="summary-item" style="border-left: 2px solid #448AFF; min-width: 140px;">
+            <span class="sum-label">澎湖 AQI (馬公)</span>
+            <div style="text-align: center;">
+                <span class="sum-value" id="env-aqi">--</span>
+                <div id="env-status" style="font-size:14px; font-weight:bold; margin-top:2px;">--</div>
+                <div id="env-pollutant" style="font-size:11px; color:#bbb; margin-top:2px;"></div>
+            </div>
+        </div>
+
+        <div class="summary-item"><span class="sum-label">湖西鄉 氣溫</span><div><span class="sum-value weather-val" id="env-temp">--</span><span class="sum-unit">℃</span></div></div>
+        <div class="summary-item"><span class="sum-label">環境風速</span><div><span class="sum-value weather-val" id="env-wind">--</span><span class="sum-unit">m/s</span></div></div>
+        <div class="summary-item"><span class="sum-label">風向</span><div><span class="sum-value weather-val" id="env-dir">--</span><span class="sum-unit" style="font-size:16px"></span></div></div>
     </div>
 
     <div id="dashboard" class="grid-container">介面載入中...</div>
 
     <div class="chart-section">
-        <h3 style="margin-top:0; color:#448AFF; text-align:center;">📈 歷史趨勢查詢</h3>
+        <h3 style="margin-top:0; color:#448AFF;">📈 歷史趨勢查詢</h3>
         <div class="chart-controls">
             <select id="sel-unit"></select>
             <select id="sel-item">
@@ -167,15 +151,15 @@
             <button onclick="queryHistory()">🔍 查詢繪圖</button>
         </div>
         <div id="msg-box"></div>
-        <div style="position: relative; height:300px; width:100%">
+        <div style="position: relative; height:400px; width:100%">
             <canvas id="historyChart"></canvas>
         </div>
     </div>
     
     <div id="footer-msg">
-        資料來源：環境部 CEMS (AQX_P_186) | AQI | Open-Meteo<br>
-        <span class="legend" style="background:#00E676; color:black;">一期</span>
-        <span class="legend" style="background:#2979FF; color:white;">二期</span><br>
+        資料來源：環境部 CEMS (AQX_P_186) | AQI | Open-Meteo (湖西氣象)<br>
+        <span class="legend" style="background:#00E676; color:black;">一期</span> 1~4號機
+        <span class="legend" style="background:#2979FF; color:white;">二期</span> 5~12號機<br>
         <span class="legend" style="background:#FFD700;">黃色預警</span> NOx>300 | SO2>120 
         <span class="legend" style="background:#FF5252;">紅色超標</span> NOx>363 | SO2>133
     </div>
@@ -269,20 +253,47 @@
             }
         }
 
+        // 🌟 AQI 抓取與顯示邏輯
         async function fetchEnvData() {
             try {
                 const res = await fetch(`https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=${API_KEY}&limit=1000&format=json`);
                 const data = await res.json();
                 const penghu = data.records.find(r => r.sitename === '馬公');
+                
+                const aqiEl = document.getElementById('env-aqi');
+                const statusEl = document.getElementById('env-status');
+                const polEl = document.getElementById('env-pollutant');
+
                 if(penghu) {
-                    document.getElementById('env-aqi').innerText = penghu.aqi;
-                    const statusEl = document.getElementById('env-status'); // 借用 status 欄位顯示狀態
-                    if(statusEl) statusEl.innerText = penghu.status;
+                    aqiEl.innerText = penghu.aqi;
+                    statusEl.innerText = penghu.status; 
+                    
+                    // 顯示指標污染物 (若有)
+                    if (penghu.pollutant) {
+                        polEl.innerText = `(${penghu.pollutant})`;
+                    } else {
+                        polEl.innerText = "";
+                    }
+
                     let aqi = parseInt(penghu.aqi);
-                    let color = aqi<=50 ? "#00E676" : (aqi<=100 ? "#FFFF00" : "#FF5252");
-                    document.getElementById('env-aqi').style.color = color;
+                    let color = "#ccc";
+
+                    // 台灣 AQI 顏色標準
+                    if(aqi <= 50) { color = "#00E676"; } // 綠 (良好)
+                    else if(aqi <= 100) { color = "#FFFF00"; } // 黃 (普通)
+                    else if(aqi <= 150) { color = "#FF9800"; } // 橘 (對敏感族群不健康)
+                    else if(aqi <= 200) { color = "#FF5252"; } // 紅 (不健康)
+                    else if(aqi <= 300) { color = "#9C27B0"; } // 紫 (非常不健康)
+                    else { color = "#795548"; } // 褐 (危害)
+
+                    aqiEl.style.color = color;
+                    statusEl.style.color = color;
+
+                } else {
+                    aqiEl.innerText = "--";
+                    statusEl.innerText = "無資料";
                 }
-            } catch(e) { }
+            } catch(e) { console.log("AQI Error"); }
 
             try {
                 const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=23.58&longitude=119.67&current=temperature_2m,wind_speed_10m,wind_direction_10m&timezone=auto`);
@@ -302,7 +313,7 @@
                     else if (deg >= 292.5 && deg < 337.5) dirStr += " (西北)";
                     document.getElementById('env-dir').innerText = dirStr;
                 }
-            } catch(e) { }
+            } catch(e) { console.log("Weather Error"); }
         }
 
         function processCemsData(records) {
