@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>尖山發電廠 CEMS 全能監控 (防彈版)</title>
+    <title>尖山發電廠 CEMS (防火牆穿越版)</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="console.error('Chart.js blocked')"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
@@ -15,27 +15,39 @@
         h1 { margin: 0; color: #448AFF; font-size: 28px; }
         .sub-title { color: #888; font-size: 14px; margin-top: 5px; }
 
-        /* 錯誤訊息區 */
-        #system-error { display: none; background: #b71c1c; color: #fff; padding: 15px; margin-bottom: 20px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; border: 1px solid #ff5252;}
+        /* 除錯視窗 (紅底白字) */
+        #debug-box { 
+            display: none; 
+            background: #b71c1c; color: #fff; border: 1px solid #ff5252;
+            padding: 15px; margin: 0 auto 20px auto; max-width: 1600px; 
+            border-radius: 8px; font-family: monospace; white-space: pre-wrap; 
+        }
 
         /* 全廠摘要面板 */
         .summary-panel {
-            display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
-            max-width: 1500px; margin: 0 auto 20px auto;
+            display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;
+            max-width: 1600px; margin: 0 auto 20px auto;
             background: #1E1E1E; padding: 15px; border-radius: 12px; border: 1px solid #448AFF;
-            box-shadow: 0 0 10px rgba(68, 138, 255, 0.2);
+            box-shadow: 0 0 15px rgba(68, 138, 255, 0.15);
         }
-        .summary-item { display: flex; flex-direction: column; align-items: center; min-width: 120px; border-right: 1px solid #333; padding: 0 15px; }
+        .summary-item { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-width: 110px; border-right: 1px solid #333; padding: 0 15px; 
+        }
         .summary-item:last-child { border-right: none; }
-        .sum-label { font-size: 14px; color: #aaa; margin-bottom: 5px; }
-        .sum-value { font-size: 28px; font-weight: bold; font-family: 'Courier New', monospace; color: #fff; }
-        .sum-unit { font-size: 12px; color: #666; }
+        
+        .sum-label { font-size: 13px; color: #aaa; margin-bottom: 6px; text-align: center; }
+        .sum-value { font-size: 24px; font-weight: bold; font-family: 'Courier New', monospace; color: #fff; }
+        .sum-unit { font-size: 12px; color: #666; margin-left: 3px;}
+        
         .avg-val { color: #00E676; }
+        .weather-val { color: #FFAB40; } 
+        .aqi-val { color: #00E5FF; }     
 
         /* Grid */
         .grid-container {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px; max-width: 1500px; margin: 0 auto 40px auto;
+            gap: 15px; max-width: 1600px; margin: 0 auto 40px auto;
         }
 
         .card {
@@ -66,7 +78,7 @@
         .val-info { color: #E0E0E0; } 
 
         /* 圖表區 */
-        .chart-section { max-width: 1500px; margin: 0 auto; background: #1E1E1E; padding: 20px; border-radius: 12px; border: 1px solid #333; }
+        .chart-section { max-width: 1600px; margin: 0 auto; background: #1E1E1E; padding: 20px; border-radius: 12px; border: 1px solid #333; }
         .chart-controls { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; background: #252525; padding: 15px; border-radius: 8px; }
         select, input { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 6px; font-size: 16px; }
         button { background: #448AFF; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 16px; cursor: pointer; }
@@ -79,26 +91,21 @@
 </head>
 <body>
 
-    <div id="system-error"></div>
-
     <header>
         <h1>尖山發電廠 CEMS 全能監控</h1>
-        <div class="sub-title" id="last-update">系統初始化...</div>
+        <div class="sub-title" id="last-update">系統啟動中...</div>
     </header>
 
+    <div id="debug-box"></div>
+
     <div class="summary-panel">
-        <div class="summary-item">
-            <span class="sum-label">運轉機組</span>
-            <div><span class="sum-value" id="total-running">--</span><span class="sum-unit">部</span></div>
-        </div>
-        <div class="summary-item">
-            <span class="sum-label">NOx 平均 (運轉中)</span>
-            <div><span class="sum-value avg-val" id="avg-nox">--</span><span class="sum-unit">ppm</span></div>
-        </div>
-        <div class="summary-item">
-            <span class="sum-label">SO2 平均 (運轉中)</span>
-            <div><span class="sum-value avg-val" id="avg-so2">--</span><span class="sum-unit">ppm</span></div>
-        </div>
+        <div class="summary-item"><span class="sum-label">運轉機組</span><div><span class="sum-value" id="total-running">--</span><span class="sum-unit">部</span></div></div>
+        <div class="summary-item"><span class="sum-label">NOx 平均</span><div><span class="sum-value avg-val" id="avg-nox">--</span><span class="sum-unit">ppm</span></div></div>
+        <div class="summary-item"><span class="sum-label">SO2 平均</span><div><span class="sum-value avg-val" id="avg-so2">--</span><span class="sum-unit">ppm</span></div></div>
+        <div class="summary-item" style="border-left: 2px solid #448AFF;"><span class="sum-label">澎湖 AQI</span><div><span class="sum-value aqi-val" id="env-aqi">--</span><span class="sum-unit" id="env-status" style="font-size:14px; font-weight:bold; color:#aaa;"></span></div></div>
+        <div class="summary-item"><span class="sum-label">湖西鄉 氣溫</span><div><span class="sum-value weather-val" id="env-temp">--</span><span class="sum-unit">℃</span></div></div>
+        <div class="summary-item"><span class="sum-label">環境風速</span><div><span class="sum-value weather-val" id="env-wind">--</span><span class="sum-unit">m/s</span></div></div>
+        <div class="summary-item"><span class="sum-label">風向</span><div><span class="sum-value weather-val" id="env-dir">--</span><span class="sum-unit" style="font-size:16px"></span></div></div>
     </div>
 
     <div id="dashboard" class="grid-container">介面載入中...</div>
@@ -124,22 +131,20 @@
     </div>
     
     <div id="footer-msg">
-        資料來源：環境部 15分鐘數據 (AQX_P_186)<br>
+        資料來源：環境部 CEMS (AQX_P_186) | 環境部空氣品質 | Open-Meteo<br>
         <span class="legend" style="background:#FFD700;">黃色預警</span> NOx>300 | SO2>120 
-        <span class="legend" style="background:#FF5252;">紅色超標</span> NOx>363 | SO2>133<br>
-        <span style="color:#2196F3; font-weight:bold;">藍色背景</span> = 運轉中
+        <span class="legend" style="background:#FF5252;">紅色超標</span> NOx>363 | SO2>133
     </div>
 
     <script>
         // --- 全域錯誤捕捉 ---
         window.onerror = function(msg, url, line) {
-            const errBox = document.getElementById('system-error');
-            errBox.style.display = 'block';
-            errBox.innerText += `⚠️ 系統錯誤: ${msg} (行數: ${line})\n`;
-            return false; 
+            const box = document.getElementById('debug-box');
+            box.style.display = 'block';
+            box.innerText += `⚠️ 發生錯誤: ${msg} (第 ${line} 行)\n`;
+            return false;
         };
 
-        // --- 變數設定 ---
         const API_KEY = '473ceb6e-8b72-4fc3-832e-183f324588ad';
         const CONTROL_ID = 'X0501232'; 
         const RULES = {
@@ -155,8 +160,7 @@
             idToPolNo[i] = pCode;
         }
 
-        // ===================== PART 1: 初始化 (保證執行) =====================
-        
+        // ===================== 初始化 (保證執行) =====================
         function initDashboard() {
             const container = document.getElementById('dashboard');
             if(!container) return;
@@ -178,7 +182,6 @@
             }
             container.innerHTML = html;
 
-            // 初始化下拉選單
             const selUnit = document.getElementById('sel-unit');
             if(selUnit) {
                 selUnit.innerHTML = '';
@@ -189,21 +192,16 @@
                     selUnit.appendChild(option);
                 }
             }
-            
             const dateEl = document.getElementById('sel-date');
             if(dateEl) dateEl.valueAsDate = new Date();
         }
 
-        // 立即執行初始化，確保畫面先出來
-        try {
-            initDashboard();
-        } catch(e) {
-            console.error("Init failed", e);
-        }
+        // 立即初始化畫面 (不等待網路)
+        try { initDashboard(); } catch(e) { console.error("Init failed:", e); }
 
-        // ===================== PART 2: 即時數據與平均值 =====================
+        // ===================== 資料抓取 =====================
 
-        async function fetchRealtime() {
+        async function fetchCems() {
             const updateLabel = document.getElementById('last-update');
             updateLabel.innerText = "更新中...";
             const URL = `https://data.moenv.gov.tw/api/v2/aqx_p_186?api_key=${API_KEY}&limit=1000&sort=m_time desc&format=json&filters=cno,eq,${CONTROL_ID}`;
@@ -212,26 +210,60 @@
                 const res = await fetch(URL);
                 if(!res.ok) throw new Error(res.status);
                 const data = await res.json();
-                
                 if (data.records && data.records.length > 0) {
-                    processRealtimeData(data.records);
+                    processCemsData(data.records);
                     const now = new Date();
-                    const t = data.records[0].m_time;
-                    updateLabel.innerText = `資料時間: ${t} (最後檢查: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')})`;
+                    updateLabel.innerText = `資料時間: ${data.records[0].m_time} (更新: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')})`;
                     updateLabel.style.color = "#00E676";
-                } else {
-                    updateLabel.innerText = "連線成功，但無資料。";
-                    updateLabel.style.color = "#FFAB40";
                 }
             } catch (e) { 
-                console.error(e); 
+                console.error("CEMS Error:", e); 
                 updateLabel.innerText = "連線失敗"; 
                 updateLabel.style.color = "red";
-                // 這裡不丟出錯誤，以免卡住
             }
         }
 
-        function processRealtimeData(records) {
+        async function fetchEnvData() {
+            // AQI
+            try {
+                const res = await fetch(`https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=${API_KEY}&limit=1000&format=json`);
+                const data = await res.json();
+                const penghu = data.records.find(r => r.sitename === '馬公');
+                if(penghu) {
+                    document.getElementById('env-aqi').innerText = penghu.aqi;
+                    const statusEl = document.getElementById('env-status');
+                    statusEl.innerText = penghu.status;
+                    let aqi = parseInt(penghu.aqi);
+                    if(aqi <= 50) statusEl.style.color = "#00E676";
+                    else if(aqi <= 100) statusEl.style.color = "#FFFF00";
+                    else statusEl.style.color = "#FF5252";
+                }
+            } catch(e) { console.log("AQI skip"); }
+
+            // Weather
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=23.58&longitude=119.67&current=temperature_2m,wind_speed_10m,wind_direction_10m&timezone=auto`);
+                const data = await res.json();
+                if(data.current) {
+                    document.getElementById('env-temp').innerText = data.current.temperature_2m;
+                    document.getElementById('env-wind').innerText = data.current.wind_speed_10m;
+                    
+                    const deg = data.current.wind_direction_10m;
+                    let dirStr = deg + "°";
+                    if (deg >= 337.5 || deg < 22.5) dirStr += " (北)";
+                    else if (deg >= 22.5 && deg < 67.5) dirStr += " (東北)";
+                    else if (deg >= 67.5 && deg < 112.5) dirStr += " (東)";
+                    else if (deg >= 112.5 && deg < 157.5) dirStr += " (東南)";
+                    else if (deg >= 157.5 && deg < 202.5) dirStr += " (南)";
+                    else if (deg >= 202.5 && deg < 247.5) dirStr += " (西南)";
+                    else if (deg >= 247.5 && deg < 292.5) dirStr += " (西)";
+                    else if (deg >= 292.5 && deg < 337.5) dirStr += " (西北)";
+                    document.getElementById('env-dir').innerText = dirStr;
+                }
+            } catch(e) { console.log("Weather skip"); }
+        }
+
+        function processCemsData(records) {
             let units = {};
             for(let i=1; i<=12; i++) units[i] = { nox: null, so2: null, o2: null, temp: null, flow: null, isRunning: false };
 
@@ -240,7 +272,6 @@
                 if (id) {
                     let name = r.itemdesc || ""; 
                     let val = parseFloat(r.m_value);
-                    
                     if (r.code2 === "NA10") units[id].isRunning = true;
 
                     if (name.includes("氮氧化物") || name.includes("NOx")) { if(units[id].nox === null) units[id].nox = val; }
@@ -251,13 +282,10 @@
                 }
             });
 
-            // 更新卡片
             for(let i=1; i<=12; i++) updateCard(i, units[i]);
-            // 更新平均值
             updateAverage(units);
         }
 
-        // 🌟 新增：平均值計算
         function updateAverage(units) {
             let runCount = 0;
             let sumNox = 0, cntNox = 0;
@@ -315,13 +343,13 @@
             }
         }
 
-        // ===================== PART 3: 歷史圖表 =====================
+        // ===================== 歷史圖表 (含安全檢查) =====================
         let myChart = null;
 
         async function queryHistory() {
-            // 檢查 Chart 是否存在 (防止沒網路時當機)
+            // 檢查圖表庫是否載入成功
             if (typeof Chart === 'undefined') {
-                alert("圖表元件載入失敗，請檢查網路連線");
+                alert("圖表模組載入失敗 (可能被防火牆阻擋)，無法繪圖。\n但上方即時監控功能不受影響。");
                 return;
             }
 
@@ -356,13 +384,7 @@
 
         function drawChart(records, itemType, unitId, dateLabel) {
             const chartData = [];
-            const keywords = {
-                'NOX': ['氮氧化物', 'NOx'],
-                'SO2': ['二氧化硫', 'SO2'],
-                'O2': ['氧氣', 'O2'],
-                'TEMP': ['溫度', 'Temp'],
-                'FLOW': ['流率', 'Flow']
-            };
+            const keywords = { 'NOX': ['氮氧化物', 'NOx'], 'SO2': ['二氧化硫', 'SO2'], 'O2': ['氧氣', 'O2'], 'TEMP': ['溫度', 'Temp'], 'FLOW': ['流率', 'Flow'] };
 
             records.forEach(r => {
                 if (!r.m_time.startsWith(dateLabel)) return;
@@ -375,8 +397,7 @@
 
             if (chartData.length === 0) {
                 document.getElementById('msg-box').innerText = `⚠️ 機組 #${unitId} 在 ${dateLabel} 沒有 ${itemType} 的數據。`;
-                if(myChart) myChart.clear();
-                return;
+                if(myChart) myChart.clear(); return;
             }
 
             let color = '#E0E0E0'; 
@@ -394,36 +415,27 @@
             const chartConfig = {
                 type: 'line',
                 data: {
-                    datasets: [{
-                        label: labelName, data: chartData,
-                        borderColor: color, backgroundColor: color + '33',
-                        borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3
-                    }]
+                    datasets: [{ label: labelName, data: chartData, borderColor: color, backgroundColor: color + '33', borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3 }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    scales: {
-                        x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } }, grid: { color: '#333' }, ticks: { color: '#aaa' } },
-                        y: { grid: { color: '#333' }, ticks: { color: '#aaa' }, beginAtZero: true }
-                    },
+                    scales: { x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } }, grid: { color: '#333' }, ticks: { color: '#aaa' } }, y: { grid: { color: '#333' }, ticks: { color: '#aaa' }, beginAtZero: true } },
                     plugins: { legend: { labels: { color: '#fff' } } }
                 }
             };
 
-            // 安全檢查：確認 annotation 插件是否存在
+            // 安全檢查：確認插件是否可用 (如果被防火牆擋住，就不畫紅線，但圖表依然能顯示)
             if (limitValue && typeof Chart.registry.plugins.get('annotation') !== 'undefined') {
-                 chartConfig.options.plugins.annotation = {
-                    annotations: {
-                        line1: { type: 'line', yMin: limitValue, yMax: limitValue, borderColor: '#FF5252', borderWidth: 2, borderDash: [6, 6], label: { display: true, content: `上限: ${limitValue}`, color: '#FF5252', position: 'end' } }
-                    }
-                };
+                 chartConfig.options.plugins.annotation = { annotations: { line1: { type: 'line', yMin: limitValue, yMax: limitValue, borderColor: '#FF5252', borderWidth: 2, borderDash: [6, 6], label: { display: true, content: `上限: ${limitValue}`, color: '#FF5252', position: 'end' } } } };
             }
             myChart = new Chart(ctx, chartConfig);
         }
 
-        // 啟動 API 抓取
-        fetchRealtime();
-        setInterval(fetchRealtime, 60000);
+        // 啟動
+        fetchCems();     
+        fetchEnvData();  
+        setInterval(fetchCems, 60000);
+        setInterval(fetchEnvData, 300000);
 
     </script>
 </body>
